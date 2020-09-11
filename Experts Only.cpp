@@ -94,7 +94,6 @@ void Run() {
     }
 
     Game* gameInstance = (Game*)(gameInstAddr);
-		const Il2CppAssembly* assembly = BTD6API::Assembly::get(assemblies, "Assembly-CSharp", size);
 
 		auto upgradeModelArr = gameInstance->fields.model->fields.upgrades;
 		UpgradeModel** upgradeModels = upgradeModelArr->vector;
@@ -272,5 +271,5 @@ void Run() {
 		}
 
 		std::cout << "Patched difficulties!" << std::endl;
-
+	}
 }
