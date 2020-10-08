@@ -15,7 +15,7 @@ namespace BTD6.py
             var scope = engine.CreateScope();
             scope.SetVariable("gameModel", model);
             scope.SetVariable("inGame", InGame.instance);
-            scope.SetVariable("convert", new Convert());
+            scope.SetVariable("util", new Util());
 
             var source = engine.CreateScriptSourceFromFile(s);
             var compiled = source.Compile();
