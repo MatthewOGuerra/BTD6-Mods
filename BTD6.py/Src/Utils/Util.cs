@@ -4,7 +4,7 @@ using Assets.Scripts.Models.Towers.Behaviors.Attack;
 
 namespace BTD6.py.Utils
 {
-    public class Convert
+    public class Util
     {
         public AttackModel BehaviorToAttackModel(Model m)
         {
