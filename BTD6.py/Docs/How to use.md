@@ -1,9 +1,9 @@
 The current variables are:
   - gameModel (Game.instance.model)
   - inGame (InGame.instance)
-  - convert (BTD6.py.Utils.Convert)
+  - util (BTD6.py.Utils.Util)
 
-Convert content:
+Util content:
   - BehaviorToAttackModel(Assets.Scripts.Models.Model m)
     > Casts a model into an AttackModel
 
