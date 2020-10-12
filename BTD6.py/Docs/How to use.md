@@ -6,6 +6,8 @@ The current variables are:
 Util content:
   - BehaviorToAttackModel(Assets.Scripts.Models.Model m)
     > Casts a model into an AttackModel
+  - FirstOrDefault(Assets.Scripts.Models.Model[] models, string name)
+    > Gets the first of a model type with a specified name
 
 Creating a mod:
   - If you want your mod to only run once, change the name to include "init"
