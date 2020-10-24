@@ -1,10 +1,14 @@
-
+﻿
 using Il2CppSystem;
-using Il2CppSystem.Collections.Generic;
+using System.Collections.Generic;
 using Il2CppSystem.IO;
-using Il2CppSystem.Net;
 using Assets.Scripts.Unity;
 using MelonLoader;
+using System.Net;
+using System.Threading;
+using BTD6.Script.Utils;
+using RuFramework;
+using UnityEngine;
 
 namespace BTD6.Script
 {
@@ -12,13 +16,24 @@ namespace BTD6.Script
     {
         public static bool hasRunInit = false;
         public static Dictionary<string, bool> pyMods = new Dictionary<string, bool>();
-        public static Dictionary<string, bool> jsMods = new Dictionary<string, bool>(); // Not functional
+        public static Dictionary<string, bool> luaMods = new Dictionary<string, bool>();
+        public static Dictionary<string, bool> booMods = new Dictionary<string, bool>();
 
+        private static List<string> requiredDependancies = new List<string>
+        {
+            "zIronPython.dll", "zIronPython.Modules.dll", "Microsoft.Scripting.dll", "Microsoft.Dynamic.dll", "zNeo.Lua.dll"
+        };
 
         public override void OnApplicationStart()
         {
             if (!Directory.Exists("ScriptMods/Python"))
                 Directory.CreateDirectory("ScriptMods/Python");
+
+            if (!Directory.Exists("ScriptMods/Lua"))
+                Directory.CreateDirectory("ScriptMods/Lua");
+
+            if (!Directory.Exists("ScriptMods/Boo"))
+                Directory.CreateDirectory("ScriptMods/Boo");
 
             if (Directory.Exists("PyMods"))
             {
@@ -31,20 +46,18 @@ namespace BTD6.Script
                 Directory.Delete("PyMods");
             }
 
-
-
             MelonLogger.Log("");
 
-            if (!File.Exists("Mods/zIronPython.dll") || !File.Exists("Mods/zIronPython.Modules.dll") || !File.Exists("Mods/Microsoft.Scripting.dll") || !File.Exists("Mods/Microsoft.Dynamic.dll"))
+            foreach (var tmp in requiredDependancies)
             {
-                Console.WriteLine("DOWNLOADING FILES! AFTER THEY ARE DONE, A MESSAGE WILL APPEAR WITH FURTHER INSTRUCTIONS!");
-                WebClient web = new WebClient();
-                web.DownloadFile("https://raw.githubusercontent.com/KosmicShovel/BTD6-Mods/master/BTD6.py/DLL/zIronPython.dll", "Mods/zIronPython.dll");
-                web.DownloadFile("https://raw.githubusercontent.com/KosmicShovel/BTD6-Mods/master/BTD6.py/DLL/zIronPython.Modules.dll", "Mods/zIronPython.Modules.dll");
-                web.DownloadFile("https://raw.githubusercontent.com/KosmicShovel/BTD6-Mods/master/BTD6.py/DLL/Microsoft.Scripting.dll", "Mods/Microsoft.Scripting.dll");
-                web.DownloadFile("https://raw.githubusercontent.com/KosmicShovel/BTD6-Mods/master/BTD6.py/DLL/Microsoft.Dynamic.dll", "Mods/Microsoft.Dynamic.dll");
-                Console.WriteLine("YOU MUST RESTART FOR PYMODS TO LOAD!");
-                return;
+                if (!File.Exists(tmp))
+                {
+                    MelonLogger.Log("DOWNLOADING FILES! AFTER THEY ARE DONE, A MESSAGE WILL APPEAR WITH FURTHER INSTRUCTIONS!");
+                    Download();
+                    Thread.Sleep(10000);
+                    Application.Quit(0);
+                    return;
+                }
             }
 
 
@@ -54,6 +67,52 @@ namespace BTD6.Script
                 pyMods.Add(File.ReadAllText(moduleFile), moduleFile.Contains("init"));
                 MelonLogger.Log(moduleFile + " loaded!");
             }
+
+            MelonLogger.Log("Lua Mods");
+            foreach (var moduleFile in Directory.GetFiles(@"ScriptMods\Lua", "*.lua"))
+            {
+                luaMods.Add(File.ReadAllText(moduleFile), moduleFile.Contains("init"));
+                MelonLogger.Log(moduleFile + " loaded!");
+            }
+
+            MelonLogger.Log("Boo Mods");
+            foreach (var moduleFile in Directory.GetFiles(@"ScriptMods\Boo", "*.boo"))
+            {
+                booMods.Add(File.ReadAllText(moduleFile), moduleFile.Contains("init"));
+                MelonLogger.Log(moduleFile + " loaded!");
+            }
+        }
+
+        private void Download()
+        {
+
+            RuProgressBar ruProgressBar = new RuProgressBar(Text: "Downloading Files");
+            ThreadPool.QueueUserWorkItem(new WaitCallback(Downloader), ruProgressBar);
+            ruProgressBar.ShowDialog();
+        }
+
+        public void Downloader(object status)
+        {
+            try
+            {
+                IProgressCallback callback = status as IProgressCallback;
+                callback.Begin(0, requiredDependancies.Count);
+                WebClient web = new WebClient();
+                for (int i = 0; i < requiredDependancies.Count; i++)
+                {
+                    if (!File.Exists("Mods/" + requiredDependancies[i]))
+                    {
+                        MelonLogger.Log("Downloading " + requiredDependancies[i]);
+                        web.DownloadFileTaskAsync("https://raw.githubusercontent.com/KosmicShovel/BTD6-Mods/master/BTD6.py/DLL/" + requiredDependancies[i], "Mods/" + requiredDependancies[i]).GetAwaiter().GetResult();
+                        MelonLogger.Log("Downloaded " + requiredDependancies[i] + "!");
+                        Console.WriteLine("");
+                    }
+                    callback.StepTo(i);
+                }
+                callback.End();
+                MelonLogger.Log("THE WIZARD WILL NOW RESTART SO YOU CAN USE THE SCRIPT MODS!");
+            }
+            catch (System.FormatException) {}
         }
 
         public override void OnUpdate()
@@ -64,12 +123,30 @@ namespace BTD6.Script
                 return;
             if (Game.instance.model.towers == null)
                 return;
+            if (Util.instance.gameModel == null)
+                MelonLogger.LogError("Utils gameModel is null while the game isnt! This isnt good!");
 
             foreach (var moduleFile in pyMods)
             {
                 if (!moduleFile.Value)
                 {
                     PyEngine.RunScript(moduleFile.Key);
+                }
+            }
+
+            foreach (var moduleFile in luaMods)
+            {
+                if (!moduleFile.Value)
+                {
+                    LuaEngine.RunScript(moduleFile.Key);
+                }
+            }
+
+            foreach (var moduleFile in booMods)
+            {
+                if (!moduleFile.Value)
+                {
+                    BooEngine.RunScript(moduleFile.Key);
                 }
             }
 
@@ -81,6 +158,22 @@ namespace BTD6.Script
                 if (moduleFile.Value)
                 {
                     PyEngine.RunScript(moduleFile.Key);
+                }
+            }
+
+            foreach (var moduleFile in luaMods)
+            {
+                if (moduleFile.Value)
+                {
+                    LuaEngine.RunScript(moduleFile.Key);
+                }
+            }
+
+            foreach (var moduleFile in booMods)
+            {
+                if (moduleFile.Value)
+                {
+                    BooEngine.RunScript(moduleFile.Key);
                 }
             }
 
