@@ -50,7 +50,7 @@ namespace BTD6.Script
 
             foreach (var tmp in requiredDependancies)
             {
-                if (!File.Exists(tmp))
+                if (!File.Exists("Mods/" + tmp))
                 {
                     MelonLogger.Log("DOWNLOADING FILES! AFTER THEY ARE DONE, A MESSAGE WILL APPEAR WITH FURTHER INSTRUCTIONS!");
                     Download();
